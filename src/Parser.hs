@@ -1,33 +1,47 @@
-module Parser (tokenise) where
+module Parser () where
 
+import Control.Applicative
 import Data.Char
 
-data Expr 
-    = Unary Operator Expr
-    | Binary Operator Expr Expr
-    | Function FunctionExpr [Expr]
-    | Simple SimpleValue
+newtype Parser a = Parser (String -> [(a, String)])
 
-newtype Operator = Operator Expr
-newtype FunctionExpr = FunctionExpr [Expr]
-newtype SimpleValue = SimpleValue Int
+parse :: Parser a -> String -> [(a, String)]
+parse (Parser x) input = x input
 
-type Token = String
+-- parses a character
+charP :: Parser Char
+charP  = Parser (\str -> case str of
+                           [] -> []
+                           (x:xs) -> [(x, xs)])
 
-allowedSymbols :: [Char]
-allowedSymbols = ['*', '+', '-', '/', '^', '%', '!', '(', ')']
+-- lets us apply a function in the parser context
+instance Functor Parser where
+    fmap fun parser = Parser (\input -> case parse parser input of
+                                          [] -> []
+                                          [(x, unconsumed)] -> [(fun x, unconsumed)])
 
-validChar :: Char -> Bool
-validChar c = isAlphaNum c || elem c allowedSymbols
+-- lets us chain parsers
+instance Applicative Parser where
+    -- lifts a value x into the parser
+    pure x = Parser (\input -> [(x, input)])
 
--- Make some whitespace around the operators
-splitAboutOperators :: String -> String
-splitAboutOperators s = foldr fun [] s
-    where
-        fun c cs = if elem c allowedSymbols then ' ':c:' ':cs else c:cs
+    -- <*> :: Parser (a -> b) -> Parser a -> Parser b
+    pg <*> px = Parser (\input -> case parse pg input of
+                                    [] -> []
+                                    [(x, unc)] -> parse (fmap x px) unc)
 
-normalise :: String -> String
-normalise = filter validChar
+instance Monad Parser where
+    p >>= f = Parser (\input -> case parse p input of
+                                  [] -> []
+                                  [(val, output)] -> parse (f val) output)
 
-tokenise :: String -> [Token]
-tokenise = words . splitAboutOperators . normalise
+instance Alternative Parser where
+    empty = Parser (\_ -> [])
+    p <|> q = Parser (\input -> case parse p input of
+                                  [] -> parse q input
+                                  result -> result)
+
+single :: (Char -> Bool) -> Parser Char
+single p = do
+    x <- charP
+    if p x then return x else empty

@@ -119,19 +119,31 @@ expr :: Parser Int
 expr = do
     t <- term
     do
-        symbol "+"
-        e <- expr
-        return (t + e)
-        <|> return t
+        add t <|> sub t <|> return t
+    where
+        add x = do
+            symbol "+"
+            e <- expr
+            return (x - e)
+        sub x = do
+            symbol "-"
+            e <- expr
+            return (x - e)
 
 term :: Parser Int
 term = do
     f <- factor
-    do 
-        symbol "*"
-        t <- term
-        return (f * t)
-        <|> return f
+    mult f <|> divide f <|> return f
+    where
+        mult x = do 
+            symbol "*"
+            t <- term
+            return (x * t)
+        divide x = do
+            symbol "/"
+            t <- term
+            return (x `div` t)
+
 
 factor :: Parser Int
 factor = do

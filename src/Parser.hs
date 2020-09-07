@@ -124,7 +124,7 @@ expr = do
         add x = do
             symbol "+"
             e <- expr
-            return (x - e)
+            return (x + e)
         sub x = do
             symbol "-"
             e <- expr

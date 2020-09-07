@@ -1,9 +1,9 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Run (run) where
 
-import Import
+import Parser
 
-run :: RIO App ()
+run :: IO ()
 run = do
-  logInfo "We're inside the application!"
+  xs <- getLine
+  putStrLn $ show $ eval xs

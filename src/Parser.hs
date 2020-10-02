@@ -30,4 +30,33 @@ instance Functor Parser where
 
 instance Applicative Parser where
   pure = return
-  (Parser f1) <*> (Parser f2)
+  (Parser cs1) <*> (Parser cs2) = Parser (\s -> [(f a, s2) | (f, s1) <- cs1 s, (a, s2) <- cs2 s1])
+
+instance Monad Parser where
+  return = unit
+  (>>=) = bind
+
+
+combine :: Parser a -> Parser a -> Parser a
+combine p q = Parser (\s -> parse p s ++ parse q s)
+
+failure :: Parser a
+failure = Parser $ \_ -> []
+
+option :: Parser a -> Parser a -> Parser a
+option p q = Parser $ \s ->
+  case parse p s of
+    [] -> parse q a
+    r -> r
+
+instance MonadPlus Parser where
+  mzero = failure
+  mplus = combine
+
+instance Alternative Parser where
+  empty = mzero
+  (<|>) = option
+
+satisfy :: (Char -> Bool) -> Parser Char
+satisfy p = item >>= \c ->
+  if p c then unit c else (Parser (\_ -> []))
